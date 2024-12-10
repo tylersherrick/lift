@@ -1,33 +1,68 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const app = express();
-const port = 5000;
 
-// Middleware to handle JSON
-app.use(express.json());
-
+// In-memory array to store workouts
 let workouts = [];
 
-// GET route
-app.get('/', (req, res) => {
-  res.send('Hello, Express!');
+// MongoDB connection setup
+mongoose.connect('mongodb://localhost:27017/workoutsDB', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+}).then(() => {
+  console.log('Connected to MongoDB');
+}).catch(err => {
+  console.error('Error connecting to MongoDB:', err);
 });
 
-app.get('/workouts', (req, res) => {
-  res.json(workouts);
+app.use(express.json());
+
+// Workout model (schema)
+const workoutSchema = new mongoose.Schema({
+  name: String,
+  duration: Number,
+  type: String
 });
 
+const Workout = mongoose.model('Workout', workoutSchema);
 
-// POST route
-app.post('/workout', (req, res) => {
-  const { title, sets, reps } = req.body;
-  const workout = { title, sets, reps };
-  workouts.push(workout); // Add workout to the array
-  console.log(`Workout added: ${title}, Sets: ${sets}, Reps: ${reps}`);
-  res.send('Workout data received!');
+// POST route to add a workout
+app.post('/workouts', async (req, res) => {
+  const { name, duration, type } = req.body;
+  
+  // Check if all required fields are present
+  if (!name || !duration || !type) {
+    return res.status(400).send('Please provide name, duration, and type.');
+  }
+
+  try {
+    // Create a new workout document
+    const newWorkout = new Workout({
+      name,
+      duration,
+      type
+    });
+
+    // Save the workout to MongoDB
+    await newWorkout.save();
+
+    res.status(201).send('Workout added!');
+  } catch (err) {
+    res.status(500).send('Error adding workout to MongoDB');
+  }
 });
 
+// Get all workouts
+app.get('/workouts', async (req, res) => {
+  try {
+    const allWorkouts = await Workout.find();
+    res.json(allWorkouts);
+  } catch (err) {
+    res.status(500).send('Error fetching workouts from MongoDB');
+  }
+});
 
-// Start the server
-app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
+// Start server
+app.listen(5000, () => {
+  console.log('Server running on http://localhost:5000');
 });
