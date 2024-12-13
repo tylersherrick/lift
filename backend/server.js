@@ -62,6 +62,29 @@ app.get('/workouts', async (req, res) => {
   }
 });
 
+app.put('/workouts/:id', async (req, res) => {
+  const { id } = req.params;
+  console.log("ID received:", id); // Debugging step
+  const { title, load, reps } = req.body;
+
+  try {
+    const workout = await Workout.findByIdAndUpdate(
+      id,
+      { title, load, reps },
+      { new: true, runValidators: true } // Ensure the updated document is returned
+    );
+
+    if (!workout) {
+      return res.status(404).json({ error: 'Workout not found' });
+    }
+
+    res.status(200).json(workout);
+  } catch (error) {
+    console.error(error.message); // Debugging step
+    res.status(400).json({ error: error.message });
+  }
+});
+
 // Start server
 app.listen(5000, () => {
   console.log('Server running on http://localhost:5000');
